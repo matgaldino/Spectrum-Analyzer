@@ -1,3 +1,8 @@
+# Spectrum Analyzer
+
+
+This project aims to develop a spectrum analyzer system using the Zynq-7000 board. The system will capture audio input (I2S), process it through a well-defined internal architecture, and output the data via DMA to a VGA screen. The VGA screen will display the signal as a frequency spectrum using FFT (Fast Fourier Transform).
+
 # Buildroot framework for Zynq-7000 and ZynqMP-SoC
 
 Requirements
