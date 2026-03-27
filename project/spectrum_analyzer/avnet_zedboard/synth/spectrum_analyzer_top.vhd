@@ -43,7 +43,6 @@ end entity;
 architecture top_arch of spectrum_analyzer_top is
   signal aclk_0      : std_logic;
   signal aresetn_0   : std_logic_vector(0 downto 0);
-  signal clk_out1_0  : std_logic;  -- 65 MHz gerado pelo clk_wiz_0
 begin
 
   bd_inst: entity work.design_1_wrapper
@@ -69,9 +68,7 @@ begin
               FIXED_IO_ps_porb          => FIXED_IO_ps_porb,
               FIXED_IO_ps_srstb         => FIXED_IO_ps_srstb,
               aclk_0                    => aclk_0,
-              aresetn_0                 => aresetn_0,
-              clk_out1_0                => clk_out1_0,  -- 65 MHz
-              reset_rtl_0               => '0'
+              aresetn_0                 => aresetn_0
             );
 
   simple_led_example: led_blink
@@ -81,7 +78,7 @@ begin
 
   -- Etapa 1: test_mode='1' fixo → barras de cor na tela
   vga_inst: vga_axis_controller
-    port map( clk_pix       => clk_out1_0,
+    port map( clk_pix       => aclk_0,
               rst_n         => aresetn_0(0),
               test_mode     => '1',
               s_axis_tdata  => (others => '0'),
