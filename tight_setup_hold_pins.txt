@@ -1,0 +1,39 @@
++====================+===================+======================================+
+| Launch Setup Clock | Launch Hold Clock | Pin                                  |
++====================+===================+======================================+
+| clk_fpga_0         | clk_fpga_0        | vga_inst/h_cnt_reg[5]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/h_cnt_reg[4]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/vsync_reg/S                 |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/h_cnt_reg[3]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/vga_g_reg[3]_lopt_replica/R |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/vga_g_reg[3]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/vga_g_reg[1]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/vga_b_reg[1]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/vga_b_reg[0]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/vga_r_reg[0]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/h_cnt_reg[2]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/h_cnt_reg[1]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/v_cnt_reg[4]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/v_cnt_reg[8]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/v_cnt_reg[3]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/v_cnt_reg[0]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/v_cnt_reg[9]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/v_cnt_reg[6]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/v_cnt_reg[1]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/v_cnt_reg[7]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/v_cnt_reg[5]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/v_cnt_reg[2]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/h_cnt_reg[8]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/h_cnt_reg[9]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/h_cnt_reg[7]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/h_cnt_reg[6]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/h_cnt_reg[10]/R             |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/h_cnt_reg[0]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/vga_r_reg[3]_lopt_replica/R |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/vga_g_reg[0]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/vga_b_reg[3]_lopt_replica/R |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/vga_b_reg[3]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/vga_r_reg[3]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/vga_r_reg[1]/R              |
+| clk_fpga_0         | clk_fpga_0        | vga_inst/hsync_reg/S                 |
++--------------------+-------------------+--------------------------------------+
