@@ -48,14 +48,113 @@
 #include <stdio.h>
 #include "platform.h"
 #include "xil_printf.h"
+#include "xil_cache.h"
+#include "xil_io.h"
+#include "sleep.h"
 
+// -------------------------------------------------------
+// AXI DMA 1 - MM2S registers
+// -------------------------------------------------------
+#define DMA_BASE_ADDR   0x40410000
+
+#define MM2S_DMACR      (DMA_BASE_ADDR + 0x00)
+#define MM2S_DMASR      (DMA_BASE_ADDR + 0x04)
+#define MM2S_SA         (DMA_BASE_ADDR + 0x18)
+#define MM2S_LENGTH     (DMA_BASE_ADDR + 0x28)
+
+// -------------------------------------------------------
+// Frame buffer in DDR
+// -------------------------------------------------------
+#define FB_ADDR         0x10000000
+#define H_VISIBLE       1024
+#define V_VISIBLE       768
+#define PIXELS_PER_FRAME (H_VISIBLE * V_VISIBLE)
+#define FB_SIZE_BYTES   (PIXELS_PER_FRAME * 4)
+
+// Pixel RGB 4:4:4 — R[11:8] G[7:4] B[3:0]
+#define MAKE_PIXEL(r, g, b) (((r & 0xF) << 8) | ((g & 0xF) << 4) | (b & 0xF))
+
+// -------------------------------------------------------
+// Fill the frame buffer with color bars
+// -------------------------------------------------------
+void fill_color_bars(void)
+{
+    unsigned int colors[8] = {
+        MAKE_PIXEL(0xF, 0x0, 0x0),  // Red
+        MAKE_PIXEL(0x0, 0xF, 0x0),  // Green
+        MAKE_PIXEL(0x0, 0x0, 0xF),  // Blue
+        MAKE_PIXEL(0xF, 0xF, 0x0),  // Yellow
+        MAKE_PIXEL(0x0, 0xF, 0xF),  // Cyan
+        MAKE_PIXEL(0xF, 0x0, 0xF),  // Magenta
+        MAKE_PIXEL(0xF, 0xF, 0xF),  // White
+        MAKE_PIXEL(0x0, 0x0, 0x0),  // Black
+    };
+
+    for (int y = 0; y < V_VISIBLE; y++) {
+        for (int x = 0; x < H_VISIBLE; x++) {
+            int band = x / 128;
+            unsigned int addr = FB_ADDR + (y * H_VISIBLE + x) * 4;
+            Xil_Out32(addr, colors[band]);
+        }
+    }
+}
+
+// -------------------------------------------------------
+// Send one frame via MM2S DMA
+// -------------------------------------------------------
+void dma_send_frame(void)
+{
+    unsigned int sr;
+
+    // 1. Reset
+    Xil_Out32(MM2S_DMACR, 0x4);
+    while (Xil_In32(MM2S_DMACR) & 0x4);
+    xil_printf("DMA reset OK\r\n");
+
+    // 2. Run
+    Xil_Out32(MM2S_DMACR, 0x1);
+    xil_printf("DMACR after run: 0x%08X\r\n", Xil_In32(MM2S_DMACR));
+
+    // 3. Source address
+    Xil_Out32(MM2S_SA, FB_ADDR);
+
+    // 4. Frame size in bytes
+    Xil_Out32(MM2S_LENGTH, FB_SIZE_BYTES);
+    xil_printf("LENGTH written: %u bytes\r\n", FB_SIZE_BYTES);
+
+    // 5. Wait for IOC_Irq with timeout
+    int timeout = 10000000;
+    while (!(Xil_In32(MM2S_DMASR) & 0x1000) && timeout > 0) {
+        timeout--;
+    }
+
+    sr = Xil_In32(MM2S_DMASR);
+    if (timeout == 0) {
+        xil_printf("TIMEOUT! DMASR=0x%08X\r\n", sr);
+    } else {
+        xil_printf("DMA OK! DMASR=0x%08X\r\n", sr);
+    }
+}
 
 int main()
 {
     init_platform();
 
-    print("Hello World\n\r");
-    print("Successfully ran Hello World application");
+    xil_printf("=== VGA DMA Test ===\r\n");
+
+    // 1. Fill the frame buffer
+    xil_printf("Filling frame buffer...\r\n");
+    fill_color_bars();
+
+    // 2. Flush the cache - required before DMA reads from DDR
+    Xil_DCacheFlushRange(FB_ADDR, FB_SIZE_BYTES);
+    xil_printf("Cache flushed, starting DMA...\r\n");
+
+    // 3. Send frames continuously
+    while (1) {
+        dma_send_frame();
+    }
+
     cleanup_platform();
     return 0;
 }

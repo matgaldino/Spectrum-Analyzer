@@ -48,14 +48,23 @@
 #include <stdio.h>
 #include "platform.h"
 #include "xil_printf.h"
+#include "sleep.h"
 
 
 int main()
 {
+    unsigned int i;
+
     init_platform();
 
-    print("Hello World\n\r");
-    print("Successfully ran Hello World application");
+    print("Hello World serial test started\r\n");
+    print("If you can read this, UART is working.\r\n");
+
+    for (i = 0; ; i++) {
+        xil_printf("tick=%u\r\n", i);
+        usleep(1000000);
+    }
+
     cleanup_platform();
     return 0;
 }

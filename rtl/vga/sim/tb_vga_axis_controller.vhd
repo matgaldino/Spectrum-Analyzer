@@ -7,7 +7,7 @@ use work.string_format_pkg.all;
 entity tb_vga_axis_controller is
   generic(
     -- Number of complete lines to test (reduced for faster simulation)
-    P_TEST_LINES : integer := 4;
+    P_TEST_LINES : integer := 8;
     -- Number of pixels per visible line
     P_H_VISIBLE  : integer := 1024
   );
@@ -29,6 +29,10 @@ architecture testbench of tb_vga_axis_controller is
   constant V_SYNC    : integer := 6;
   constant V_BP      : integer := 29;
   constant V_TOTAL   : integer := V_VISIBLE + V_FP + V_SYNC + V_BP; -- 806
+
+  constant C_HANDSHAKE_TIMEOUT_CYCLES : integer := H_TOTAL * V_TOTAL;
+  constant C_SOF_TIMEOUT_CYCLES       : integer := H_TOTAL * V_TOTAL * 2;
+  constant C_CAPTURE_TIMEOUT_CYCLES   : integer := H_TOTAL * V_TOTAL;
 
   -- -------------------------------------------------------
   -- Types for sample storage
@@ -78,6 +82,14 @@ begin
 
   finished <= stim_stream_finished and stim_ready_finished;
 
+  param_check: process
+  begin
+    assert P_H_VISIBLE = H_VISIBLE
+      report "TB generic P_H_VISIBLE must match DUT H_VISIBLE"
+      severity failure;
+    wait;
+  end process;
+
   -- -------------------------------------------------------
   -- Device Under Test
   -- -------------------------------------------------------
@@ -105,7 +117,7 @@ begin
     clk_pix <= '1'; wait for 7.69 ns;
     clk_pix <= '0'; wait for 7.69 ns;
     if finished then
-    -- Ciclos extras para o verif executar após finished
+    -- Extra cycles for verif to execute after finished
     for i in 0 to 9 loop
       clk_pix <= '1'; wait for 7.69 ns;
       clk_pix <= '0'; wait for 7.69 ns;
@@ -173,6 +185,7 @@ end process;
     variable seed2 : integer := 137;
     variable fval  : real;
     variable slv   : std_logic_vector(11 downto 0);
+    variable wait_cycles : integer := 0;
   begin
     s_axis_tvalid <= '0';
     s_axis_tdata  <= (others => '0');
@@ -215,7 +228,16 @@ end process;
         else
           s_axis_tuser <= '0';
         end if;
-        wait until s_axis_tready = '1' and rising_edge(clk_pix);
+
+        wait_cycles := 0;
+        loop
+          wait until rising_edge(clk_pix);
+          exit when s_axis_tready = '1';
+          wait_cycles := wait_cycles + 1;
+          assert wait_cycles < C_HANDSHAKE_TIMEOUT_CYCLES
+            report "Timeout waiting for tready in stim_stream"
+            severity failure;
+        end loop;
       end loop;
     end loop;
 
@@ -232,44 +254,64 @@ end process;
   -- Output Capture
   -- -------------------------------------------------------
 stim_out_capture: process
-  variable row     : integer := 0;
-  variable col     : integer := 0;
-  variable capture : boolean := false;
+  variable row      : integer := 0;
+  variable col      : integer := 0;
+  variable was_hs   : boolean := false;
+  variable sof_wait_cycles : integer := 0;
+  variable stall_cycles    : integer := 0;
 begin
-  -- Aguarda SOF para sincronizar com o início real do stream
-  wait until s_axis_tuser = '1' and s_axis_tvalid = '1' and rising_edge(clk_pix);
-  print_info("Capture: SOF detectado, iniciando captura");
+  print_info("Capture: waiting for SOF handshake");
+  sof_wait_cycles := 0;
+  loop
+    wait until rising_edge(clk_pix);
+    exit when s_axis_tuser = '1' and s_axis_tvalid = '1' and s_axis_tready = '1';
+    sof_wait_cycles := sof_wait_cycles + 1;
+    assert sof_wait_cycles < C_SOF_TIMEOUT_CYCLES
+      report "Timeout waiting for SOF handshake in stim_out_capture"
+      severity failure;
+  end loop;
+  print_info("Capture: SOF detected, starting capture");
 
-  row     := 0;
-  col     := 0;
-  capture := false;
+  row    := 0;
+  col    := 0;
+  -- SOF was accepted in the previous cycle (full handshake),
+  -- so capture must start on the next cycle.
+  was_hs := true;
+  stall_cycles := 0;
 
   while row < P_TEST_LINES loop
     wait until rising_edge(clk_pix);
 
-    -- Captura 1 ciclo após handshake (compensa pipeline do DUT)
-    if capture then
+    -- Capture on the cycle AFTER the handshake (1-cycle pipeline)
+    if was_hs then
       recv_frame(row)(col).r <= vga_r;
       recv_frame(row)(col).g <= vga_g;
       recv_frame(row)(col).b <= vga_b;
       if col = P_H_VISIBLE-1 then
         col := 0;
         row := row + 1;
+        print_info("Captured line, row=" & integer'image(row));
       else
         col := col + 1;
       end if;
-      capture := false;
     end if;
 
-    -- Handshake completo = pixel consumido
+    -- Record whether a handshake occurred in THIS cycle
     if s_axis_tready = '1' and s_axis_tvalid = '1' then
-      capture := true;
+      was_hs := true;
+      stall_cycles := 0;
+    else
+      was_hs := false;
+      stall_cycles := stall_cycles + 1;
+      assert stall_cycles < C_CAPTURE_TIMEOUT_CYCLES
+        report "Timeout while waiting handshakes in stim_out_capture"
+        severity failure;
     end if;
 
   end loop;
 
   stim_ready_finished <= true;
-  print_info("Capture: todos os pixels capturados");
+  print_info("Capture: all pixels captured");
   wait;
 end process;
 
