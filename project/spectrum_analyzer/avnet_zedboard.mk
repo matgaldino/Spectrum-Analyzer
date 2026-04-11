@@ -20,6 +20,7 @@ PRE_BITSTREAM_CONSTRAINTS  =
 include rtl/led_blink/sources.mk
 include rtl/simple_axis_adder/sources.mk
 include rtl/vga/sources.mk
+include rtl/i2s/sources.mk
 
 # top synthetizable sources
 SYNTH_SRC += ${PROJECT_DIR}/avnet_zedboard/synth/design_1.bd
