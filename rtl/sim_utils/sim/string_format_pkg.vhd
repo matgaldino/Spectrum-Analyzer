@@ -25,8 +25,7 @@ package body string_format_pkg is
   constant C_HEXA_CHARS: string(1 to 16) := "0123456789ABCDEF";
 
   function to_hex_char(val : std_logic_vector(3 downto 0)) return character is
-    variable index : integer;
-    variable undef : boolean;
+    variable index : integer := 0;
   begin
     for i in val'range loop
       if(val(i) = '1') then
@@ -47,6 +46,7 @@ package body string_format_pkg is
     for i in str'range loop
       str(i) := to_hex_char(ext(i * 4 - 1 downto i * 4 - 4));
     end loop;
+    return str;
   end function;
 
 

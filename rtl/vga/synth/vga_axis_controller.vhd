@@ -43,7 +43,8 @@ architecture rtl of vga_axis_controller is
   signal g_comb       : std_logic_vector(3 downto 0);
   signal b_comb       : std_logic_vector(3 downto 0);
   signal axis_tready_i: std_logic;
-  signal synced       : std_logic := '1';
+  signal synced       : std_logic := '0';
+  signal sof_hs       : std_logic;
 
 begin
 
@@ -56,15 +57,14 @@ begin
       if rst_n = '0' then
         h_cnt  <= 0;
         v_cnt  <= 0;
-        synced <= '1';
+        synced <= '0';
       else
         if s_axis_tvalid = '1' and axis_tready_i = '1' and
            s_axis_tuser = '1' and test_mode = '0' then
-          -- SOF received: resynchronizes counters to (0,0)
-          -- Pixel 0 is consumed in this cycle, counters stay at 0
-          -- so the next pixel is displayed at position 1
+          -- SOF received: pixel 0 is consumed in this cycle.
+          -- Advance to column 1 so next accepted pixel maps to x=1.
           synced <= '1';
-          h_cnt  <= 0;
+          h_cnt  <= 1;
           v_cnt  <= 0;
         else
           -- Normal scan
@@ -93,11 +93,13 @@ begin
                               v_cnt <  V_VISIBLE + V_FP + V_SYNC) else '1';
   axis_tready_i <= active_video and (not test_mode);
   s_axis_tready <= axis_tready_i;
+  sof_hs        <= '1' when (s_axis_tvalid = '1' and axis_tready_i = '1' and
+                             s_axis_tuser = '1' and test_mode = '0') else '0';
 
   -- -------------------------------------------------------
   -- Color generation
   -- -------------------------------------------------------
-  process(h_cnt, v_cnt, active_video, test_mode, synced, s_axis_tdata, s_axis_tvalid)
+  process(h_cnt, v_cnt, active_video, test_mode, synced, s_axis_tdata, s_axis_tvalid, sof_hs)
     variable band : integer;
   begin
     r_comb <= (others => '0');
@@ -126,7 +128,7 @@ begin
       else
         -- Normal mode: AXI Stream
         -- Display pixel if synchronized and valid data present
-        if synced = '1' and s_axis_tvalid = '1' then
+        if (synced = '1' or sof_hs = '1') and s_axis_tvalid = '1' then
           r_comb <= s_axis_tdata(11 downto 8);
           g_comb <= s_axis_tdata(7  downto 4);
           b_comb <= s_axis_tdata(3  downto 0);
