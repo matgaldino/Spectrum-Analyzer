@@ -1,50 +1,3 @@
-/******************************************************************************
-*
-* Copyright (C) 2009 - 2014 Xilinx, Inc.  All rights reserved.
-*
-* Permission is hereby granted, free of charge, to any person obtaining a copy
-* of this software and associated documentation files (the "Software"), to deal
-* in the Software without restriction, including without limitation the rights
-* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the Software is
-* furnished to do so, subject to the following conditions:
-*
-* The above copyright notice and this permission notice shall be included in
-* all copies or substantial portions of the Software.
-*
-* Use of the Software is limited solely to applications:
-* (a) running on a Xilinx device, or
-* (b) that interact with a Xilinx device through a bus or interconnect.
-*
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-* XILINX  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
-* OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-* SOFTWARE.
-*
-* Except as contained in this notice, the name of the Xilinx shall not be used
-* in advertising or otherwise to promote the sale, use or other dealings in
-* this Software without prior written authorization from Xilinx.
-*
-******************************************************************************/
-
-/*
- * helloworld.c: simple test application
- *
- * This application configures UART 16550 to baud rate 9600.
- * PS7 UART (Zynq) is not initialized by this application, since
- * bootrom/bsp configures it to baud rate 115200
- *
- * ------------------------------------------------
- * | UART TYPE   BAUD RATE                        |
- * ------------------------------------------------
- *   uartns550   9600
- *   uartlite    Configurable only in HW design
- *   ps7_uart    115200 (configured by bootrom/bsp)
- */
-
 #include <stdio.h>
 #include "platform.h"
 #include "xil_printf.h"
@@ -53,41 +6,59 @@
 #include "sleep.h"
 
 // -------------------------------------------------------
-// AXI DMA 1 - MM2S registers
+// AXI DMA 1 - MM2S (VGA)
 // -------------------------------------------------------
-#define DMA_BASE_ADDR   0x40410000
-
-#define MM2S_DMACR      (DMA_BASE_ADDR + 0x00)
-#define MM2S_DMASR      (DMA_BASE_ADDR + 0x04)
-#define MM2S_SA         (DMA_BASE_ADDR + 0x18)
-#define MM2S_LENGTH     (DMA_BASE_ADDR + 0x28)
+#define DMA1_BASE_ADDR  0x40410000
+#define MM2S_DMACR      (DMA1_BASE_ADDR + 0x00)
+#define MM2S_DMASR      (DMA1_BASE_ADDR + 0x04)
+#define MM2S_SA         (DMA1_BASE_ADDR + 0x18)
+#define MM2S_LENGTH     (DMA1_BASE_ADDR + 0x28)
 
 // -------------------------------------------------------
-// Frame buffer in DDR
+// AXI DMA 2 - S2MM (I2S capture)
 // -------------------------------------------------------
-#define FB_ADDR         0x10000000
-#define H_VISIBLE       1024
-#define V_VISIBLE       768
-#define PIXELS_PER_FRAME (H_VISIBLE * V_VISIBLE)
-#define FB_SIZE_BYTES   (PIXELS_PER_FRAME * 4)
+#define DMA2_BASE_ADDR  0x40420000
+#define S2MM_DMACR      (DMA2_BASE_ADDR + 0x30)
+#define S2MM_DMASR      (DMA2_BASE_ADDR + 0x34)
+#define S2MM_DA         (DMA2_BASE_ADDR + 0x48)
+#define S2MM_LENGTH     (DMA2_BASE_ADDR + 0x58)
 
-// Pixel RGB 4:4:4 — R[11:8] G[7:4] B[3:0]
+// -------------------------------------------------------
+// Frame buffer - VGA
+// -------------------------------------------------------
+#define FB_ADDR             0x10000000
+#define H_VISIBLE           1024
+#define V_VISIBLE           768
+#define PIXELS_PER_FRAME    (H_VISIBLE * V_VISIBLE)
+#define FB_SIZE_BYTES       (PIXELS_PER_FRAME * 4)
+
+// -------------------------------------------------------
+// Audio capture buffer
+// 44100 Hz * 2 canais * 4 bytes * 1 segundo
+// Cada sample é 64 bits (8 bytes) = par L+R
+// -------------------------------------------------------
+#define AUDIO_BUF_ADDR      0x11000000
+#define AUDIO_SAMPLE_RATE   44100
+#define AUDIO_SECONDS       1
+#define AUDIO_PAIRS         (AUDIO_SAMPLE_RATE * AUDIO_SECONDS)
+#define AUDIO_SIZE_BYTES    (AUDIO_PAIRS * 8)   // 8 bytes por par L+R
+
 #define MAKE_PIXEL(r, g, b) (((r & 0xF) << 8) | ((g & 0xF) << 4) | (b & 0xF))
 
 // -------------------------------------------------------
-// Fill the frame buffer with color bars
+// Frame buffer
 // -------------------------------------------------------
 void fill_color_bars(void)
 {
     unsigned int colors[8] = {
-        MAKE_PIXEL(0xF, 0x0, 0x0),  // Red
-        MAKE_PIXEL(0x0, 0xF, 0x0),  // Green
-        MAKE_PIXEL(0x0, 0x0, 0xF),  // Blue
-        MAKE_PIXEL(0xF, 0xF, 0x0),  // Yellow
-        MAKE_PIXEL(0x0, 0xF, 0xF),  // Cyan
-        MAKE_PIXEL(0xF, 0x0, 0xF),  // Magenta
-        MAKE_PIXEL(0xF, 0xF, 0xF),  // White
-        MAKE_PIXEL(0x0, 0x0, 0x0),  // Black
+        MAKE_PIXEL(0xF, 0x0, 0x0),
+        MAKE_PIXEL(0x0, 0xF, 0x0),
+        MAKE_PIXEL(0x0, 0x0, 0xF),
+        MAKE_PIXEL(0xF, 0xF, 0x0),
+        MAKE_PIXEL(0x0, 0xF, 0xF),
+        MAKE_PIXEL(0xF, 0x0, 0xF),
+        MAKE_PIXEL(0xF, 0xF, 0xF),
+        MAKE_PIXEL(0x0, 0x0, 0x0),
     };
 
     for (int y = 0; y < V_VISIBLE; y++) {
@@ -100,57 +71,97 @@ void fill_color_bars(void)
 }
 
 // -------------------------------------------------------
-// Send one frame via MM2S DMA
+// MM2S DMA (VGA)
 // -------------------------------------------------------
 void dma_send_frame(void)
 {
     unsigned int sr;
 
-    // 1. Reset
     Xil_Out32(MM2S_DMACR, 0x4);
     while (Xil_In32(MM2S_DMACR) & 0x4);
-    xil_printf("DMA reset OK\r\n");
 
-    // 2. Run
     Xil_Out32(MM2S_DMACR, 0x1);
-    xil_printf("DMACR after run: 0x%08X\r\n", Xil_In32(MM2S_DMACR));
-
-    // 3. Source address
     Xil_Out32(MM2S_SA, FB_ADDR);
-
-    // 4. Frame size in bytes
     Xil_Out32(MM2S_LENGTH, FB_SIZE_BYTES);
-    xil_printf("LENGTH written: %u bytes\r\n", FB_SIZE_BYTES);
 
-    // 5. Wait for IOC_Irq with timeout
     int timeout = 10000000;
-    while (!(Xil_In32(MM2S_DMASR) & 0x1000) && timeout > 0) {
+    while (!(Xil_In32(MM2S_DMASR) & 0x1000) && timeout > 0)
         timeout--;
-    }
 
     sr = Xil_In32(MM2S_DMASR);
+    if (timeout == 0)
+        xil_printf("VGA DMA TIMEOUT! DMASR=0x%08X\r\n", sr);
+}
+
+// -------------------------------------------------------
+// S2MM DMA (I2S capture)
+// -------------------------------------------------------
+void dma_capture_audio(void)
+{
+    int timeout;
+    unsigned int sr;
+
+    // 1. Reset
+    Xil_Out32(S2MM_DMACR, 0x4);
+    while (Xil_In32(S2MM_DMACR) & 0x4);
+
+    // 2. Run
+    Xil_Out32(S2MM_DMACR, 0x1);
+
+    // 3. Destination address
+    Xil_Out32(S2MM_DA, AUDIO_BUF_ADDR);
+
+    // 4. Length — dispara a transferência
+    Xil_Out32(S2MM_LENGTH, AUDIO_SIZE_BYTES);
+
+    xil_printf("Capturando %d pares L+R (%d bytes)...\r\n",
+               AUDIO_PAIRS, AUDIO_SIZE_BYTES);
+
+    // 5. Aguarda IOC
+    timeout = 100000000;
+    while (!(Xil_In32(S2MM_DMASR) & 0x1000) && timeout > 0)
+        timeout--;
+
+    sr = Xil_In32(S2MM_DMASR);
     if (timeout == 0) {
-        xil_printf("TIMEOUT! DMASR=0x%08X\r\n", sr);
-    } else {
-        xil_printf("DMA OK! DMASR=0x%08X\r\n", sr);
+        xil_printf("AUDIO DMA TIMEOUT! DMASR=0x%08X\r\n", sr);
+        return;
+    }
+
+    xil_printf("Captura OK! DMASR=0x%08X\r\n", sr);
+
+    // 6. Invalida cache antes de ler
+    Xil_DCacheInvalidateRange(AUDIO_BUF_ADDR, AUDIO_SIZE_BYTES);
+
+    // 7. Imprime primeiros 16 pares L+R para verificação
+    xil_printf("Primeiros 16 pares L+R:\r\n");
+    for (int i = 0; i < 16; i++) {
+        unsigned int addr = AUDIO_BUF_ADDR + i * 8;
+        unsigned int word0 = Xil_In32(addr + 0);  // bytes 0-3
+        unsigned int word1 = Xil_In32(addr + 4);  // bytes 4-7
+        xil_printf("[%2d] word0=0x%08X  word1=0x%08X\r\n", i, word0, word1);
     }
 }
 
+// -------------------------------------------------------
+// Main
+// -------------------------------------------------------
 int main()
 {
     init_platform();
+    xil_printf("=== VGA + I2S DMA Test ===\r\n");
 
-    xil_printf("=== VGA DMA Test ===\r\n");
-
-    // 1. Fill the frame buffer
-    xil_printf("Filling frame buffer...\r\n");
+    // Frame buffer
+    xil_printf("Preenchendo frame buffer...\r\n");
     fill_color_bars();
-
-    // 2. Flush the cache - required before DMA reads from DDR
     Xil_DCacheFlushRange(FB_ADDR, FB_SIZE_BYTES);
-    xil_printf("Cache flushed, starting DMA...\r\n");
 
-    // 3. Send frames continuously
+    // Captura 1 segundo de audio
+    xil_printf("Iniciando captura de audio...\r\n");
+    dma_capture_audio();
+
+    // Loop VGA
+    xil_printf("Iniciando loop VGA...\r\n");
     while (1) {
         dma_send_frame();
     }
