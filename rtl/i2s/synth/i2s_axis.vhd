@@ -66,8 +66,12 @@ architecture rtl of i2s_axis is
   signal lrck_src     : std_logic := '0';
   signal sclk_prev    : std_logic := '1';
   signal sclk_rise    : std_logic := '0';
+  signal sclk_fall    : std_logic := '0';
   signal sclk_rise_int: std_logic;
+  signal sclk_fall_int: std_logic;
   signal sclk_rise_ext: std_logic := '0';
+  signal sclk_fall_ext: std_logic := '0';
+  signal sclk_fall_d  : std_logic := '0';
 
   -- -------------------------------------------------------
   -- LRCK generation: SCLK / 64
@@ -84,6 +88,7 @@ architecture rtl of i2s_axis is
   -- -------------------------------------------------------
   signal bit_cnt   : unsigned(4 downto 0) := (others => '0');
   signal shift_reg : std_logic_vector(23 downto 0) := (others => '0');
+  signal sdata_d   : std_logic := '0';
 
   -- -------------------------------------------------------
   -- AXI Stream output
@@ -135,10 +140,14 @@ begin
       if rst_n = '0' then
         sclk_prev <= '1';
         sclk_rise_ext <= '0';
+        sclk_fall_ext <= '0';
       else
         sclk_rise_ext <= '0';
+        sclk_fall_ext <= '0';
         if sclk_prev = '0' and sclk_src = '1' then
           sclk_rise_ext <= '1';
+        elsif sclk_prev = '1' and sclk_src = '0' then
+          sclk_fall_ext <= '1';
         end if;
         sclk_prev <= sclk_src;
       end if;
@@ -146,7 +155,28 @@ begin
   end process;
 
   sclk_rise_int <= '1' when mclk_cnt = 7 else '0';
+  sclk_fall_int <= '1' when mclk_cnt = 3 else '0';
   sclk_rise <= sclk_rise_ext when G_USE_EXT_CLK else sclk_rise_int;
+  sclk_fall <= sclk_fall_ext when G_USE_EXT_CLK else sclk_fall_int;
+
+  -- Diagnostic margin patch: pre-samples SDATA on SCLK falling edge,
+  -- then uses the registered value on SCLK rising edge.
+  process(mclk)
+  begin
+    if rising_edge(mclk) then
+      if rst_n = '0' then
+        sdata_d <= '0';
+        sclk_fall_d <= '0';
+      else
+        -- Samples one mclk after SCLK falling edge to avoid sampling
+        -- exactly at the external transition instant.
+        sclk_fall_d <= sclk_fall;
+        if sclk_fall_d = '1' then
+          sdata_d <= sdata;
+        end if;
+      end if;
+    end if;
+  end process;
 
   -- -------------------------------------------------------
   -- LRCK generation from SCLK
@@ -227,12 +257,12 @@ begin
 
           -- bit_cnt = 1..24: captures audio bits (MSB first)
           if bit_cnt >= 1 and bit_cnt <= 24 then
-            shift_reg <= shift_reg(22 downto 0) & sdata;
+            shift_reg <= shift_reg(22 downto 0) & sdata_d;
           end if;
 
           -- bit_cnt = 24: last audio bit captured -> publishes sample
           if bit_cnt = 24 then
-            tdata_r  <= shift_reg(22 downto 0) & sdata & x"00";  -- left-aligned
+            tdata_r  <= shift_reg(22 downto 0) & sdata_d & x"00";  -- left-aligned
             tvalid_r <= '1';
             tlast_r  <= is_right;   -- '1' on Right channel (end of stereo pair)
             tuser_r  <= not is_right;  -- '1' on Left channel (start of stereo pair)
