@@ -7,6 +7,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 use work.pkg_led_blink.all;
 use work.pkg_vga_axis_controller.all;
+use work.pkg_i2s_axis.all; 
 
 entity spectrum_analyzer_top is
 port( DDR_addr : inout STD_LOGIC_VECTOR ( 14 downto 0 );
@@ -36,13 +37,24 @@ port( DDR_addr : inout STD_LOGIC_VECTOR ( 14 downto 0 );
         vsync : out std_logic;
         vga_r : out std_logic_vector(3 downto 0);
         vga_g : out std_logic_vector(3 downto 0);
-        vga_b : out std_logic_vector(3 downto 0)
+        vga_b : out std_logic_vector(3 downto 0);
+        -- I2S ADC (CS5343) — PMOD JA bottom row
+        i2s_adc_mclk  : out std_logic;
+        i2s_adc_sclk  : out std_logic;
+        i2s_adc_lrck  : out std_logic;
+        i2s_adc_sdata : in  std_logic;
+        -- I2S DAC (CS4344) — PMOD JA top row (loopback test)
+        i2s_dac_mclk  : out std_logic;
+        i2s_dac_sclk  : out std_logic;
+        i2s_dac_lrck  : out std_logic;
+        i2s_dac_sdata : out std_logic
       );
 end entity;
 
 architecture top_arch of spectrum_analyzer_top is
   signal aclk_0      : std_logic;
   signal aresetn_0   : std_logic_vector(0 downto 0);
+  signal clk_out1_0  : std_logic;  -- 22.5792 MHz MCLK for I2S
 
   -- AXI Stream do DMA → VGA
   signal mm2s_tdata  : std_logic_vector(31 downto 0);
@@ -50,6 +62,13 @@ architecture top_arch of spectrum_analyzer_top is
   signal mm2s_tvalid : std_logic;
   signal mm2s_tready : std_logic;
   signal mm2s_tlast  : std_logic;
+
+  -- AXI Stream loopback: i2s_axis -> axis_i2s
+  signal i2s_axis_tdata  : std_logic_vector(31 downto 0);
+  signal i2s_axis_tvalid : std_logic;
+  signal i2s_axis_tready : std_logic;
+  signal i2s_axis_tlast  : std_logic;
+  signal i2s_axis_tuser  : std_logic;
 
   -- tuser generation (SOF) - AXI DMA doesn't generate tuser
   -- tuser must be a one-beat pulse on the first pixel handshake of each frame.
@@ -85,6 +104,8 @@ begin
               FIXED_IO_ps_srstb         => FIXED_IO_ps_srstb,
               aclk_0                    => aclk_0,
               aresetn_0                 => aresetn_0,
+              reset_rtl_0               => '0',
+              clk_out1_0                => clk_out1_0,
               M_AXIS_MM2S_0_tdata        => mm2s_tdata,
               M_AXIS_MM2S_0_tkeep        => mm2s_tkeep,
               M_AXIS_MM2S_0_tvalid       => mm2s_tvalid,
@@ -152,6 +173,38 @@ begin
               vga_r         => vga_r,
               vga_g         => vga_g,
               vga_b         => vga_b);
+
+  -- -------------------------------------------------------
+  -- I2S loopback: ADC -> AXI Stream -> DAC
+  -- Both modules share MCLK (clk_out1_0)
+  -- -------------------------------------------------------
+  i2s_rx: i2s_axis
+    port map( mclk          => clk_out1_0,
+              rst_n         => aresetn_0(0),
+              sclk          => i2s_adc_sclk,
+              lrck          => i2s_adc_lrck,
+              sdata         => i2s_adc_sdata,
+              m_axis_tdata  => i2s_axis_tdata,
+              m_axis_tvalid => i2s_axis_tvalid,
+              m_axis_tready => i2s_axis_tready,
+              m_axis_tlast  => i2s_axis_tlast,
+              m_axis_tuser  => i2s_axis_tuser);
+
+  i2s_tx: axis_i2s
+    port map( mclk          => clk_out1_0,
+              rst_n         => aresetn_0(0),
+              s_axis_tdata  => i2s_axis_tdata,
+              s_axis_tvalid => i2s_axis_tvalid,
+              s_axis_tready => i2s_axis_tready,
+              s_axis_tlast  => i2s_axis_tlast,
+              s_axis_tuser  => i2s_axis_tuser,
+              sclk          => i2s_dac_sclk,
+              lrck          => i2s_dac_lrck,
+              sdata         => i2s_dac_sdata);
+
+  -- External MCLK distribution to both codecs on PMOD JA.
+  i2s_adc_mclk <= clk_out1_0;
+  i2s_dac_mclk <= clk_out1_0;
 
 
   -- -- Step 1: fixed test_mode='1' → color bars on the screen

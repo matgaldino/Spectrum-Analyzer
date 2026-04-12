@@ -36,4 +36,5 @@ package pkg_i2s_axis is
       sdata         : out std_logic
     );
   end component;
+
 end package;
