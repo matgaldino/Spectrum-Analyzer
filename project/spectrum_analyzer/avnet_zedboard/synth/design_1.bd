@@ -1,7 +1,7 @@
 {
   "design": {
     "design_info": {
-      "boundary_crc": "0x529FB2C18CEAB708",
+      "boundary_crc": "0x5D3BE297DEB495B4",
       "device": "xc7z020clg484-1",
       "name": "design_1",
       "rev_ctrl_bd_flag": "RevCtrlBdOff",
@@ -22,7 +22,8 @@
         "m01_couplers": {}
       },
       "xlconcat_0": "",
-      "axi_dma_1": ""
+      "axi_dma_1": "",
+      "clk_wiz_0": ""
     },
     "interface_ports": {
       "DDR": {
@@ -294,6 +295,19 @@
         "direction": "O",
         "left": "0",
         "right": "0"
+      },
+      "reset_rtl_0": {
+        "type": "rst",
+        "direction": "I",
+        "parameters": {
+          "POLARITY": {
+            "value": "ACTIVE_HIGH"
+          }
+        }
+      },
+      "clk_out1_0": {
+        "type": "clk",
+        "direction": "O"
       }
     },
     "components": {
@@ -322,7 +336,7 @@
             "value": "66.666672"
           },
           "PCW_ACT_FPGA1_PERIPHERAL_FREQMHZ": {
-            "value": "10.000000"
+            "value": "100.000000"
           },
           "PCW_ACT_FPGA2_PERIPHERAL_FREQMHZ": {
             "value": "10.000000"
@@ -379,7 +393,7 @@
             "value": "66666672"
           },
           "PCW_CLK1_FREQ": {
-            "value": "10000000"
+            "value": "100000000"
           },
           "PCW_CLK2_FREQ": {
             "value": "10000000"
@@ -415,7 +429,7 @@
             "value": "Share reset pin"
           },
           "PCW_EN_CLK1_PORT": {
-            "value": "0"
+            "value": "1"
           },
           "PCW_EN_CLK2_PORT": {
             "value": "0"
@@ -444,16 +458,22 @@
           "PCW_EN_USB0": {
             "value": "1"
           },
+          "PCW_FCLK_CLK1_BUF": {
+            "value": "TRUE"
+          },
           "PCW_FPGA0_PERIPHERAL_FREQMHZ": {
             "value": "65.000000"
           },
           "PCW_FPGA1_PERIPHERAL_FREQMHZ": {
-            "value": "150.000000"
+            "value": "100.000000"
           },
           "PCW_FPGA2_PERIPHERAL_FREQMHZ": {
             "value": "50"
           },
           "PCW_FPGA_FCLK0_ENABLE": {
+            "value": "1"
+          },
+          "PCW_FPGA_FCLK1_ENABLE": {
             "value": "1"
           },
           "PCW_GPIO_MIO_GPIO_ENABLE": {
@@ -1912,6 +1932,32 @@
             }
           }
         }
+      },
+      "clk_wiz_0": {
+        "vlnv": "xilinx.com:ip:clk_wiz:6.0",
+        "xci_name": "design_1_clk_wiz_0_0",
+        "xci_path": "ip/design_1_clk_wiz_0_0/design_1_clk_wiz_0_0.xci",
+        "inst_hier_path": "clk_wiz_0",
+        "parameters": {
+          "CLKOUT1_JITTER": {
+            "value": "629.510"
+          },
+          "CLKOUT1_PHASE_ERROR": {
+            "value": "767.789"
+          },
+          "CLKOUT1_REQUESTED_OUT_FREQ": {
+            "value": "22.5792"
+          },
+          "MMCM_CLKFBOUT_MULT_F": {
+            "value": "63.250"
+          },
+          "MMCM_CLKOUT0_DIVIDE_F": {
+            "value": "31.125"
+          },
+          "MMCM_DIVCLK_DIVIDE": {
+            "value": "9"
+          }
+        }
       }
     },
     "interface_nets": {
@@ -2001,6 +2047,12 @@
           "xlconcat_0/In1"
         ]
       },
+      "clk_wiz_0_clk_out1": {
+        "ports": [
+          "clk_wiz_0/clk_out1",
+          "clk_out1_0"
+        ]
+      },
       "proc_sys_reset_0_peripheral_aresetn": {
         "ports": [
           "proc_sys_reset_0/peripheral_aresetn",
@@ -2034,10 +2086,22 @@
           "axi_dma_1/s_axi_lite_aclk"
         ]
       },
+      "processing_system7_0_FCLK_CLK1": {
+        "ports": [
+          "processing_system7_0/FCLK_CLK1",
+          "clk_wiz_0/clk_in1"
+        ]
+      },
       "processing_system7_0_FCLK_RESET0_N": {
         "ports": [
           "processing_system7_0/FCLK_RESET0_N",
           "proc_sys_reset_0/ext_reset_in"
+        ]
+      },
+      "reset_rtl_0_1": {
+        "ports": [
+          "reset_rtl_0",
+          "clk_wiz_0/reset"
         ]
       },
       "xlconcat_0_dout": {
