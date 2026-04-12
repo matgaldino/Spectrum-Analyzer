@@ -3,7 +3,19 @@ library ieee;
 use ieee.std_logic_1164.all;
 
 package pkg_i2s_axis is
+  component i2s_clkgen is
+    port(
+      mclk : in  std_logic;
+      rst_n: in  std_logic;
+      sclk : out std_logic;
+      lrck : out std_logic
+    );
+  end component;
+
   component i2s_axis is
+    generic(
+      G_USE_EXT_CLK : boolean := false
+    );
     port(
       mclk          : in  std_logic;
       rst_n         : in  std_logic;
@@ -11,6 +23,8 @@ package pkg_i2s_axis is
       sclk          : out std_logic;
       lrck          : out std_logic;
       sdata         : in  std_logic;
+      ext_sclk      : in  std_logic := '0';
+      ext_lrck      : in  std_logic := '0';
 
       m_axis_tdata  : out std_logic_vector(31 downto 0);
       m_axis_tvalid : out std_logic;
@@ -21,6 +35,9 @@ package pkg_i2s_axis is
   end component;
 
   component axis_i2s is
+    generic(
+      G_USE_EXT_CLK : boolean := false
+    );
     port(
       mclk          : in  std_logic;
       rst_n         : in  std_logic;
@@ -33,7 +50,9 @@ package pkg_i2s_axis is
 
       sclk          : out std_logic;
       lrck          : out std_logic;
-      sdata         : out std_logic
+      sdata         : out std_logic;
+      ext_sclk      : in  std_logic := '0';
+      ext_lrck      : in  std_logic := '0'
     );
   end component;
 

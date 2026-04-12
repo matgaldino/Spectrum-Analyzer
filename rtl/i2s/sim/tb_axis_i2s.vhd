@@ -212,10 +212,6 @@ begin
       s_axis_tlast  <= '0';
       s_axis_tvalid <= '1';
 
-      if pair = 0 then
-        axis_started <= true;
-      end if;
-
       timeout := 0;
       loop
         wait until rising_edge(mclk);
@@ -225,6 +221,11 @@ begin
           report "Timeout waiting AXIS ready on Left sample"
           severity failure;
       end loop;
+
+      -- Marks start only after first Left sample is actually accepted.
+      if pair = 0 then
+        axis_started <= true;
+      end if;
 
       -- Deassert between beats to keep waveforms readable
       s_axis_tvalid <= '0';

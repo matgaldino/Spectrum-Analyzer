@@ -225,6 +225,12 @@ begin
         adc_started <= true;
       end if;
 
+      -- Philips I2S delay slot: first falling edge after LRCK transition
+      -- does not carry MSB.
+      wait until falling_edge(sclk);
+      sdata <= '0';
+
+      -- MSB starts on the next falling edge.
       wait until falling_edge(sclk);
       sample := sent_left(pair);
       for b in 23 downto 0 loop
@@ -233,7 +239,8 @@ begin
           wait until falling_edge(sclk);
         end if;
       end loop;
-      for b in 0 to 7 loop
+      -- 1 delay + 24 data + 7 padding = 32 SCLKs per channel frame
+      for b in 0 to 6 loop
         wait until falling_edge(sclk);
         sdata <= '0';
       end loop;
@@ -251,6 +258,12 @@ begin
       end loop;
       lrck_prev_v := lrck;
 
+      -- Philips I2S delay slot: first falling edge after LRCK transition
+      -- does not carry MSB.
+      wait until falling_edge(sclk);
+      sdata <= '0';
+
+      -- MSB starts on the next falling edge.
       wait until falling_edge(sclk);
       sample := sent_right(pair);
       for b in 23 downto 0 loop
@@ -259,7 +272,8 @@ begin
           wait until falling_edge(sclk);
         end if;
       end loop;
-      for b in 0 to 7 loop
+      -- 1 delay + 24 data + 7 padding = 32 SCLKs per channel frame
+      for b in 0 to 6 loop
         wait until falling_edge(sclk);
         sdata <= '0';
       end loop;
