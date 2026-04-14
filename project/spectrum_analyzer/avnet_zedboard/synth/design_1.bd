@@ -1,7 +1,7 @@
 {
   "design": {
     "design_info": {
-      "boundary_crc": "0x5D3BE297DEB495B4",
+      "boundary_crc": "0x5D3BE297BD1C37F8",
       "device": "xc7z020clg484-1",
       "name": "design_1",
       "rev_ctrl_bd_flag": "RevCtrlBdOff",
@@ -1886,7 +1886,12 @@
         "vlnv": "xilinx.com:ip:xlconcat:2.1",
         "xci_name": "design_1_xlconcat_0_0",
         "xci_path": "ip/design_1_xlconcat_0_0/design_1_xlconcat_0_0.xci",
-        "inst_hier_path": "xlconcat_0"
+        "inst_hier_path": "xlconcat_0",
+        "parameters": {
+          "NUM_PORTS": {
+            "value": "3"
+          }
+        }
       },
       "axi_dma_1": {
         "vlnv": "xilinx.com:ip:axi_dma:7.1",
@@ -1901,13 +1906,28 @@
             "value": "0"
           },
           "c_include_sg": {
-            "value": "0"
+            "value": "1"
           },
           "c_sg_length_width": {
             "value": "23"
           }
         },
         "interface_ports": {
+          "M_AXI_SG": {
+            "vlnv": "xilinx.com:interface:aximm_rtl:1.0",
+            "mode": "Master",
+            "address_space_ref": "Data_SG",
+            "base_address": {
+              "minimum": "0x00000000",
+              "maximum": "0xFFFFFFFF",
+              "width": "32"
+            },
+            "parameters": {
+              "master_id": {
+                "value": "5"
+              }
+            }
+          },
           "M_AXI_MM2S": {
             "vlnv": "xilinx.com:interface:aximm_rtl:1.0",
             "mode": "Master",
@@ -1927,6 +1947,10 @@
         "addressing": {
           "address_spaces": {
             "Data_MM2S": {
+              "range": "4G",
+              "width": "32"
+            },
+            "Data_SG": {
               "range": "4G",
               "width": "32"
             }
@@ -1997,6 +2021,12 @@
           "axi_smc/S03_AXI"
         ]
       },
+      "axi_dma_1_M_AXI_SG": {
+        "interface_ports": [
+          "axi_dma_1/M_AXI_SG",
+          "axi_smc/S04_AXI"
+        ]
+      },
       "axi_smc_M00_AXI": {
         "interface_ports": [
           "axi_smc/M00_AXI",
@@ -2047,6 +2077,12 @@
           "xlconcat_0/In1"
         ]
       },
+      "axi_dma_1_mm2s_introut": {
+        "ports": [
+          "axi_dma_1/mm2s_introut",
+          "xlconcat_0/In2"
+        ]
+      },
       "clk_wiz_0_clk_out1": {
         "ports": [
           "clk_wiz_0/clk_out1",
@@ -2083,7 +2119,8 @@
           "axi_dma_0/m_axi_s2mm_aclk",
           "ps7_0_axi_periph/M01_ACLK",
           "axi_dma_1/m_axi_mm2s_aclk",
-          "axi_dma_1/s_axi_lite_aclk"
+          "axi_dma_1/s_axi_lite_aclk",
+          "axi_dma_1/m_axi_sg_aclk"
         ]
       },
       "processing_system7_0_FCLK_CLK1": {
@@ -2164,6 +2201,15 @@
       "/axi_dma_1": {
         "address_spaces": {
           "Data_MM2S": {
+            "segments": {
+              "SEG_processing_system7_0_HP0_DDR_LOWOCM": {
+                "address_block": "/processing_system7_0/S_AXI_HP0/HP0_DDR_LOWOCM",
+                "offset": "0x00000000",
+                "range": "512M"
+              }
+            }
+          },
+          "Data_SG": {
             "segments": {
               "SEG_processing_system7_0_HP0_DDR_LOWOCM": {
                 "address_block": "/processing_system7_0/S_AXI_HP0/HP0_DDR_LOWOCM",
